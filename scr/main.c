@@ -1,11 +1,30 @@
-//
-// Created by YINYANG on 2023/5/9.
-//
+#include<stdio.h>
+#include"peripherals.h"
+#include "../include/ourRS2.h"
+
+FILE *stdout = &UART_LIGHT_FILE;
+
+void version1();
 
 
-int main(char argc, char* argv[]){
 
+void main(){
+    // Version 1, with sleep function
+    version1();
+}
+
+
+
+void version1(){
     startOled();
-
-    return 0;
+    startSensor();
+    midFilterInit();
+    while(1){
+        sleep_ms(70);
+        readInCm();
+        print("Entfernung :%d",midPassFilter.result);
+        startMidFilter();
+        showResult();
+    }
+    spi_peri_deselect();
 }

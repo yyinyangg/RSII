@@ -1,22 +1,51 @@
-//
-// Created by YINYANG on 2023/5/8.
-//
-#ifndef OUR_SPI_
-#define OUR_SPI_
+#ifndef OURRS_H_
+#define OURRS_H_
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include <spi.h>
+#include<spi.h>
+#include<i2c_master.h>
 
 void spi_peri_enable();
 void spi_peri_select();
 void spi_peri_deselect();
 void spi_peri_write(const unsigned char);
 void startOled();
-#ifdef __cplusplus
-}
-#endif
+
+void i2c_peri_enable();
+void i2c_peri_read();
+void i2c_peri_write(const unsigned char);
+void startSensor();
+void readInCm();
+
+void lowPassFilterInit(double sample_rate, double time_coefficient);
+void startLowPassFilter();
+
+void midPassFilterInit();
+void startMidPassFilter();
+void quicksort();
+
+
+struct SRF02{
+    unsigned int resultHigh;
+    unsigned int resultLow;
+    unsigned int result;
+
+}sensor;
+
+struct low_pass{
+    double unfiltered[2];
+    double filtered[2];
+    double sample_rate;
+    double time_coefficient;
+} lowPassFilter;
+
+struct mid_pass{
+    unsigned int val[5];
+    unsigned result;
+}midPassFilter;
+
 
 #endif
+
+
+
+

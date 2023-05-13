@@ -11,20 +11,16 @@
 #include "moduleParameters.h"
 #include "font.h"
 #include <stdio.h>
-
-#include "ourRS2.h"
-
+#include "../include/ourRS2.h"
 #define Shift 28
-
 #define CommandMask 0x0FF
 #define DataMask 0x100
-
 //--------------------------------------------------------------------------
 //send Command to OLED
 //--------------------------------------------------------------------------
 void oled_Command_25664(unsigned char Data)
 {
-    spi_peri_write((Data & CommandMask));
+	spi_peri_write((Data & CommandMask));
 }
 
 //--------------------------------------------------------------------------
@@ -32,7 +28,7 @@ void oled_Command_25664(unsigned char Data)
 //--------------------------------------------------------------------------
 void oled_Data_25664(unsigned char Data)
 {
-    spi_peri_write((Data | DataMask));
+      spi_peri_write((Data | DataMask));
 }
 
 
