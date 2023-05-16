@@ -1,0 +1,11 @@
+set -tmpdir                temp
+set -xsthdpdir             xst_lib
+
+run
+-define {jc3_toolchain="ise" jc3_toolchain_ise jc3_device="XC6SLX16_2CSG324" jc3_device_XC6SLX16_2CSG324 jc3_family="Spartan_6" jc3_family_Spartan_6 jc3_target="SP601" jc3_target_SP601 }
+-vlgincdir                 {"/cad/spartanmc/rs2/19/spartanmc/hardware"}
+-ifn                       /home/rs01/RS2/Versuch1/system/spartanmc.prj
+-ofn                       spartanmc
+-lso                       spartanmc.lso
+-top                       configuration
+-p XC6SLX16-2CSG324 -ifmt mixed -ofmt NGC -opt_mode Speed -opt_level 1 -iuc NO -glob_opt ALLClockNets -rtlview YES -read_cores YES -write_timing_constraints NO -cross_clock_analysis NO -hierarchy_separator / -bus_delimiter [] -case maintain -slice_utilization_ratio 100 -fsm_extract YES -fsm_encoding Auto -fsm_style lut -ram_extract Yes -ram_style Auto -rom_extract Yes -rom_style Auto -shreg_extract YES -resource_sharing YES -mult_style auto -iobuf YES -max_fanout 500 -bufg 8 -register_duplication YES -equivalent_register_removal YES -register_balancing Yes -optimize_primitives No -iob auto -slice_utilization_ratio_maxmargin 5
