@@ -11,6 +11,7 @@ void spi_peri_write(const unsigned char);
 void startOled();
 
 void i2c_peri_enable();
+void sendReadCommand();
 void i2c_peri_read();
 void i2c_peri_write(const unsigned char);
 void startSensor();
@@ -23,7 +24,7 @@ void midPassFilterInit();
 void startMidPassFilter();
 void quicksort();
 void showResult();
-
+void searchSlave();
 
 struct SRF02{
     unsigned int resultHigh;
