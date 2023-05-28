@@ -26,6 +26,11 @@ void quicksort();
 void showResult();
 void searchSlave();
 
+void setupCompare();
+void setupTimer();
+void stopCompare();
+void startCompare();
+
 struct SRF02{
     unsigned int resultHigh;
     unsigned int resultLow;
