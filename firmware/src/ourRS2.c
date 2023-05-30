@@ -40,7 +40,6 @@ void startOled(){
     Checkerboard_25664();
     Show_String_25664(1,head,15,0);
     Show_String_25664(1,content,5,15);
-    //printf("checkPoint1\n");
 }
 
 void i2c_peri_enable(){
@@ -50,13 +49,12 @@ void i2c_peri_enable(){
 }
 
 void sendReadCommand(){
-    /**/
     I2C_MASTER.data[0]= (I2C_SLAVE_ADDRESS<<1); //set the last bit to 0,indicating for writing
     I2C_MASTER.data[1] = 2; // set registerpointer to #2
     I2C_MASTER.cmd = I2C_CMD_STA | (2<<3) | I2C_CMD_STO;
-    while (I2C_MASTER.stat & I2C_STA_TIP);
+    //while (I2C_MASTER.stat & I2C_STA_TIP);
     //printf("Reading Command sent\n");
-    while(I2C_MASTER.stat & I2C_STA_NO_ACK);
+    //while(I2C_MASTER.stat & I2C_STA_NO_ACK);
     //printf("got Acknowledge from Slave\n");
 }
 void i2c_peri_read(){
@@ -64,12 +62,12 @@ void i2c_peri_read(){
     I2C_MASTER.data[0]= (I2C_SLAVE_ADDRESS<<1)+1;//set the last bit to 0,indicating for reading
     I2C_MASTER.cmd = I2C_CMD_STA | (3<<3) | I2C_CMD_RD;// read 2 bytes from sensor
 
-    while(I2C_MASTER.stat & I2C_STA_TIP);	//wait for not busy
+    //while(I2C_MASTER.stat & I2C_STA_TIP);	//wait for not busy
     //printf("transfer complete\n");
 
     sensor.resultHigh = I2C_MASTER.data[1];
     sensor.resultLow = I2C_MASTER.data[2];
-    printf("get result %u, %u\n", sensor.resultHigh,sensor.resultLow);
+    //printf("get result %u, %u\n", sensor.resultHigh,sensor.resultLow);
 }
 
 
@@ -79,44 +77,22 @@ void i2c_peri_write(const unsigned char data){
     I2C_MASTER.data[2] = data;
     I2C_MASTER.cmd = I2C_CMD_STA | (3<<3) | I2C_CMD_STO;
 
-    while (I2C_MASTER.stat & I2C_STA_TIP);
+    //while (I2C_MASTER.stat & I2C_STA_TIP);
     //printf("Transfer ends\n");
 
-    while(I2C_MASTER.stat & I2C_STA_NO_ACK);
+    //while(I2C_MASTER.stat & I2C_STA_NO_ACK);
     //printf("got Acknowledge from Slave\n");
 }
 
 void startSensor(){
-    i2c_peri_enable();
+
     i2c_peri_write(0x51);
 }
 void readInCm(){
 
     i2c_peri_read();
     sensor.result = (sensor.resultHigh)*256 +sensor.resultLow ;
-    printf("result from Sensor is  %u\n", sensor.result);
-}
-
-void lowPassFilterInit(double sample_rate, double time_coefficient)
-{
-    lowPassFilter.sample_rate = sample_rate;
-    lowPassFilter.time_coefficient = time_coefficient;
-    lowPassFilter.filtered[0] = 0;
-    lowPassFilter.filtered[1] = 0;
-    lowPassFilter.unfiltered[0] = 0;
-    lowPassFilter.unfiltered[1] = 0;
-}
-
-void startLowPassFilter()
-{
-    double tau_s = lowPassFilter.time_coefficient;
-    double tau_sw = lowPassFilter.sample_rate;
-
-    lowPassFilter.filtered[0] = tau_s / (tau_s + 2 * tau_sw) *
-                                (lowPassFilter.unfiltered[0] + lowPassFilter.unfiltered[1]) -
-                                ((tau_s - 2 * tau_sw) / (tau_s + 2 * tau_sw)) * lowPassFilter.filtered[1];
-    lowPassFilter.filtered[1] = lowPassFilter.filtered[0];
-    lowPassFilter.unfiltered[1] = lowPassFilter.unfiltered[0];
+    //printf("result from Sensor is  %u\n", sensor.result);
 }
 
 void midPassFilterInit(){
@@ -135,9 +111,10 @@ void startMidPassFilter(){
 
     quicksort(0,4);
     midPassFilter.result = midPassFilter.val[2];
+    /*
     for( int i = 0; i<length; i++){
-        printf("midPassFilter.val[%d] = %u ",i,midPassFilter.val[i]);
-    }
+        printf("midPassFilter.val[%d] = %u \n",i,midPassFilter.val[i]);
+    }*/
 }
 void quicksort(int leftPosi, int rightPosi) {
     if (leftPosi < rightPosi) {
@@ -161,7 +138,7 @@ void quicksort(int leftPosi, int rightPosi) {
 }
 
 void showResult(){
-    char * unit=" CM";
+    char * unit="   CM";
     char getResult[5];
 
 
@@ -170,15 +147,17 @@ void showResult(){
     Show_String_25664(1,unit,30,15);
     Show_String_25664(1,getResult,28,15);
 }
+/*
 void searchSlave(){
+    i2c_peri_enable();
     I2C_MASTER.data[0]= (I2C_SLAVE_ADDRESS<<1); //set the last bit to 0,indicating for writing
     I2C_MASTER.data[1] = 0; // set registerpointer to #0
     I2C_MASTER.cmd = I2C_CMD_STA | (2<<3) | I2C_CMD_STO;
-    while (I2C_MASTER.stat & I2C_STA_TIP);
-    while(I2C_MASTER.stat & I2C_STA_NO_ACK);
+    //while (I2C_MASTER.stat & I2C_STA_TIP);
+    //while(I2C_MASTER.stat & I2C_STA_NO_ACK);
 
     printf(" search Slave \n");
-}
+}*/
 void setupTimer(){
     TIMER.control &= ResetMask;
     TIMER.limit = 16410*2;

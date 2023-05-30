@@ -7,11 +7,10 @@
 FILE *stdout = &UART_LIGHT_FILE;
 
 #define IDLE (unsigned  int) 0
-//#define START (unsigned int) 1
-#define ON (unsigned int) 2
-//#define FINISH (unsigned int) 3
-//#define READING (unsigned int) 4
-unsigned int flag = IDLE;
+#define START (unsigned int) 1
+#define FINISH (unsigned int) 2
+#define READING (unsigned int) 3
+unsigned int flag = START;
 
 
 void version1();
@@ -29,7 +28,9 @@ void main(){
 void version1(){
     startOled();
     midPassFilterInit();
+    i2c_peri_enable();
     while(1){
+
         startSensor();
         sleep(0.08);
         sendReadCommand();
@@ -44,41 +45,58 @@ void version2(){
     startOled();
     interrupt_enable();
     midPassFilterInit();
+    i2c_peri_enable();
     startSensor();
+    while(1){
+        startMidPassFilter();
+        showResult();
+    }
 }
 
 ISR(0)(){
-    printf("get in ISR 0\n");
-    printf("flag is %u",flag);
-    if(flag == IDLE){
-    printf("Start Timer\n");
-    flag =ON;
+//printf("get in ISR 0 with flag %u\n",flag);
+    switch(flag){
+
+    case IDLE:
+    flag = START;
+    I2C_MASTER.data[0]=0;
+    //printf("start Sensor *******************\n");
+    startSensor();
+    break;
+
+    case START:
+    flag = FINISH;
+    I2C_MASTER.data[0]=0;
+    //printf("start Timer \\n");
     startCompare();
+    break;
+
+    case READING:
+    flag = IDLE;
+    I2C_MASTER.data[0]=0;
+    //printf("reading and showing\n");
+
+    readInCm();
+    break;
+
+    default:
+    flag = IDLE;
+    I2C_MASTER.data[0]=0;
+    printf("Invalid Parameter got ! \n");
+    break;
     }
 }
 ISR(1)(){
-    printf("get in ISR 1 \n");
-    switch(flag){
+    //printf("get in ISR 1 with flag %u\n",flag);
 
-        case IDLE:
-            flag = ON;
-            printf("switch on Sensor\n");
-            startSensor();
-            break;
+    if(flag == FINISH){
+    //printf("complete messing\n");
 
-        case ON:
-            flag = IDLE;
-            printf("start reading\n");
-            sendReadCommand();
-            readInCm();
-            startMidPassFilter();
-            showResult();
-            printf("finish reading and restart\n");
-            break;
-
-        default:
-            flag = IDLE;
-            printf("Invalid Parameter got ! \n");
-            break;
+    flag =READING;
+    stopCompare();
+    sendReadCommand();
+    }
+    else{
+    printf("wrong Flag\n");
     }
 }
