@@ -1,107 +1,138 @@
-#include<stdio.h>
-#include"peripherals.h"
-#include "../include/ourRS2.h"
-#include <sleep.h>
+#include <stdio.h>
+#include "peripherals.h"
+#include <debugging.h>
+#include "ourdisplay.h"
+#include <moduleParameters.h>
+#include "sleep.h"
+#include "display.h"
 #include "interrupt.h"
-#include <timer.h>
-FILE *stdout = &UART_LIGHT_FILE;
+#include <stdlib.h>
+#include <peripherals/compare.h>
+#include <peripherals/timer.h>
 
-#define IDLE (unsigned  int) 0
-#define START (unsigned int) 1
-#define RESTART (unsigned int) 2
-#define FINISH (unsigned int) 3
-#define READING (unsigned int) 4
-unsigned int flag = IDLE;
+DEFINE_SLEEP_MS(sleep_ms, SB_SPARTANMC_FREQUENCY)
 
+FILE * stdout = &UART_LIGHT_FILE;
+unsigned int distances[5];
+int	state = 0;
+int index = 0;
+unsigned int firmware;
+unsigned int dataReturn;
+char str[5];
+char *cm = "_____cm";
+int timer_flag;
 
-void version1();
-void version2();
-
-
-void main(){
-    // Version 1, with sleep function
-    version1();
-
-    //Version 2, with ISR
-    //version2();
-}
-
-void version1(){
-    startOled();
-    midPassFilterInit();
-    i2c_peri_enable();
-    while(1){
-    
-        startSensor();
-        sleep(0.08);
-        sendReadCommand();
-        readInCm();
-        startMidPassFilter();
-        showResult();
+/*
+ * Medianfilterung, um die Ausgabe zu filtern
+ * @arr Ein Array, das fünf aufeinanderfolgende Entfernungen speichert
+ * */
+unsigned int MidFilter(unsigned int arr[5]){
+	short isSorted;
+	int temp;
+	int length = sizeof(arr[5]) / sizeof(unsigned int);
+	for(int i=0; i<length-1; i++){
+        isSorted = 1;  			//assume the remaining elements are sorted
+        for(int j=0; j<length-1-i; j++){
+            if(arr[j] > arr[j+1]){
+                temp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+                isSorted = 0;  			//if exchange happens => the array is unordered
+            }
+        }
+        if(isSorted) break; 			//if no change => array is ordered
     }
-    spi_peri_deselect();
+    return arr[length/2];
 }
 
-void version2(){
-    startOled();
-    interrupt_enable();
-    midPassFilterInit();
-    i2c_peri_enable();
-    startSensor();
-    //searchSlave();
-   
-    printf("processor is free\n");
-}
-
+/*
+ * Interrupt
+ * */
+ 
 ISR(0)(){
-    printf("get in ISR 0 with flag %u\n",flag);
-    switch(flag){
-    
-        case IDLE:
-        flag = START;
-        I2C_MASTER.data[0]=0;
-        printf("start Timer *******************\n");
-        
-	startCompare();
+		//printf("interrupzt state");
+		
+		//second version
+		switch(state){
+			case 0: 
+				state = 1;
+				firmware = ReadFirmware(); // ReadFirmware
+				//printf("Die State ist:%u\n",state);
+				break;
+			case 1: // judge if the Reg0 = 0xFF
+				if(firmware == 0xFF){
+					state = 0;
+					firmware = ReadFirmware();
+				}else{
+					state = 2;
+					i2c_peri_read_inital();
+				}
+				break;
+			case 2:
+				state = 0;
+				dataReturn = i2c_peri_read();
+				if(index < 5){
+					distances[index] = dataReturn;
+					index++;
+				}else {
+					index = 0;
+					dataReturn = MidFilter(distances);
+					printf("Die Distanz ist:%u\n", dataReturn);
+					//itoa(dataReturn, str,10);
+					snprintf(str, 5, "%u", dataReturn);
+					//timer_flag = 1;
+				}
+				break;
+			default:
+				printf("unknown state: %u\n", state);
+				state = 0;
+				break;
+		}
+
 	
-        break;
-        
-        case FINISH:
-        flag = READING;
-        I2C_MASTER.data[0]=0;
-        readInCm();
-        
-        break;
-        
-        case READING:
-        flag = IDLE;
-        I2C_MASTER.data[0]=0;
-        printf("reading and showing\n");
-        startMidPassFilter();
-        showResult();
-        startSensor();
-            
-        break;
-
-        default:
-            flag = IDLE;
-            printf("Invalid Parameter got ! \n");
-            i2c_peri_enable();
-            break;
-    }
 }
-ISR(1)(){
-    printf("get in ISR 1 with flag %u\n",flag);
-    
-    if(flag == START){
-    printf("complete messing\n");
 
-    flag =FINISH;
-    stopCompare();
-    sendReadCommand();
-    }
-    else{
-    printf("wrong Flag\n");
-    }
 
+
+void main() {
+	printf("*************New Round start***************\n");
+	interrupt_enable();
+	display_init();
+	timer_flag = 0;
+	//char *str2 = "123456";
+
+	printf("*************New Round start***************\n");
+	while(1){
+		//ultraschall_init();
+		
+		/*second version: statemachine in INterrupt*/
+		i2c_peri_enable();
+		i2c_peri_write(0x51);
+		
+		/*first version with sleep function, this can perfectly run*/
+		/*
+		i2c_peri_enable();
+		i2c_peri_write(0x51);
+		sleep_ms(65); //Sleep for 65 ms
+		
+		i2c_peri_read_inital();
+		dataReturn = i2c_peri_read();
+		if(index < 5){
+			distances[index] = dataReturn;
+			index++;
+		}else {
+			index = 0;
+			dataReturn = MidFilter(distances);
+			printf("Die Distanz ist:%u\n", dataReturn);
+			
+			//itoa(dataReturn, str,10);
+			snprintf(str, 5, "%u", dataReturn);
+		}*/
+		
+			
+			Show_String_25664(1, cm, 40, 12);
+			Show_String_25664(1, str, 40, 12);
+	}
+	
+	spi_peri_deselect();
 }
