@@ -25,6 +25,10 @@ void main(){
     version2();
 }
 
+/*
+ * using sleep function to suspend the Thread, until the messing is completed,
+ * the While Loop inside the Diver should be uncommented
+ * */
 void version1(){
     startOled();
     midPassFilterInit();
@@ -41,6 +45,9 @@ void version1(){
     spi_peri_deselect();
 }
 
+/*
+ * using ISR and State Machine to read the data register in Sensor
+ * */
 void version2(){
     startOled();
     interrupt_enable();
@@ -48,55 +55,58 @@ void version2(){
     i2c_peri_enable();
     startSensor();
     while(1){
+
         startMidPassFilter();
         showResult();
+
     }
 }
 
+/*
+ * the ISR of I2C Interrupt source
+ * */
 ISR(0)(){
 //printf("get in ISR 0 with flag %u\n",flag);
-    switch(flag){
+switch(flag){
+case IDLE:
+flag = START;
+I2C_MASTER.data[0]=0;//stop the ISR
+readInCm();
+startSensor();
+break;
 
-    case IDLE:
-    flag = START;
-    I2C_MASTER.data[0]=0;
-    //printf("start Sensor *******************\n");
-    startSensor();
-    break;
+case START:
+flag = FINISH;
+I2C_MASTER.data[0]=0;
+startCompare();
+break;
 
-    case START:
-    flag = FINISH;
-    I2C_MASTER.data[0]=0;
-    //printf("start Timer \\n");
-    startCompare();
-    break;
+case READING:
+flag = IDLE;
+I2C_MASTER.data[0]=0;
+i2c_peri_read();
 
-    case READING:
-    flag = IDLE;
-    I2C_MASTER.data[0]=0;
-    //printf("reading and showing\n");
+break;
 
-    readInCm();
-    break;
-
-    default:
-    flag = IDLE;
-    I2C_MASTER.data[0]=0;
-    printf("Invalid Parameter got ! \n");
-    break;
-    }
+default:
+flag = IDLE;
+I2C_MASTER.data[0]=0;
+printf("Invalid Parameter got ! \n");
+break;
 }
+}
+
+/*
+ * the ISR of Timer interrupt source
+ * */
 ISR(1)(){
-    //printf("get in ISR 1 with flag %u\n",flag);
-
-    if(flag == FINISH){
-    //printf("complete messing\n");
-
-    flag =READING;
-    stopCompare();
-    sendReadCommand();
-    }
-    else{
-    printf("wrong Flag\n");
-    }
+//printf("get in ISR 1 with flag %u\n",flag);
+if(flag == FINISH){
+flag =READING;
+stopCompare();
+sendReadCommand();
+}
+else{
+printf("wrong Flag\n");
+}
 }
