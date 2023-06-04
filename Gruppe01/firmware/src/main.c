@@ -67,7 +67,7 @@ void version2(){
  * the ISR of I2C Interrupt source
  * */
 ISR(0)(){
-printf("get in ISR 0 with flag %u\n",flag); // Frage: Falls man diese Zeile auskommentiert, funktioniert der Sensor nicht
+printf("get in ISR 0 with flag %u\n",flag); // man braucht die Funktion die ISR zu verzögern, sonst wird der Sensor nicht richtig gestarted
 switch(flag){
 case IDLE:
 flag = START;
