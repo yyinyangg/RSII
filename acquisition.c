@@ -78,6 +78,7 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
     P = P/sizeOfX*2;
 
     for(int32_t index_fd = 0; index_fd < testFreqCount; index_fd++){
+    if(result) break;
         int32_t fd = testFrequencies[index_fd];
         float X_fd[sizeOfX];
         float X_fd_DFT[sizeOfX];
@@ -98,7 +99,7 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
             }
         }
 
-        float angle =0;
+        angle =0;
         for(int k =0;k<sizeOfC;k+=2){
             C_DFT[k] = 0;
             C_DFT[k+1] =0;
@@ -137,6 +138,7 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
             }
             if(max >gamma)
                 result = true;
+                break;
         }
     }
     return result; // return whether acquisition was achieved or not!
