@@ -5,6 +5,10 @@
 #include <string.h>
 #include <math.h>
 
+#define PI 3.14159267
+#define gamma 0.015
+#define fs 2000000
+
 typedef struct {
     int32_t codePhase;
     int32_t dopplerFrequency;
@@ -14,7 +18,7 @@ typedef struct {
     // Example:
     int32_t sampleCount;
     float* samples;
-    
+
     int32_t codeCount;
     float* codes;
 } acquisitionInternal_t;
@@ -49,7 +53,7 @@ void enterSample(acquisition_t* acq, float real, float imag) {
     // Example
     a->samples[a->sampleCount] = real;
     a->samples[a->sampleCount+1] = imag;
-    a->sampleCount += 2; 
+    a->sampleCount += 2;
 }
 
 void enterCode(acquisition_t* acq, float real, float imag) {
@@ -58,29 +62,82 @@ void enterCode(acquisition_t* acq, float real, float imag) {
     // put a code-entry into the state in [a]
     a->codes[a->codeCount] = real;
     a->codes[a->codeCount+1] = imag;
-    a->sampleCount += 2; 
+    a->codeCount += 2;
 }
 
 __attribute__((noipa))
 bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* testFrequencies) {
     acquisitionInternal_t * a = (acquisitionInternal_t*) acq;
-    int length = sizeof(a->codes)/sizeof(float);
-    float sum_real = 0;
-    float sum_img =0;
-    float angle =0;
-    for(int k =0;k<length;k++){
-    	sum_real = 0;
-    	sum_img =0;
-    	for(int n =0;n<length;n++){
-    		angle = 2*3.14159267*k*n/length;
-    		sum_real += a->samples[n][0]*cos(angle) + a->samples[n][1]*sin(angle);
-    		sum_img += -a->samples[n][0]*sin(angle) + a->samples[n][1]*cos(angle);
-    	}
-    	
-    } 
+    bool result = false;
+    int sizeOfC = sizeof(a->codes)/sizeof(float);
+    int sizeOfX = sizeof (a->samples)/sizeof(float);
+    float P = 0;
+    for(int i = 0; i < sizeOfX; i++){
+        P += a->samples[i] * a->samples[i];
+    }
+    P = P/sizeOfX*2;
 
+    for(int32_t index_fd = 0; index_fd < testFreqCount; index_fd++){
+        int32_t fd = testFrequencies[index_fd];
+        float X_fd[sizeOfX];
+        float X_fd_DFT[sizeOfX];
+        float C_DFT[sizeOfC];
+        for(int i = 0; i < sizeOfX; i+=2){
+            X_fd[i] = a->samples[i] * cos(2*PI*fd*i/fs) + a->samples[i+1]*sin(2*PI*fd*i/fs);
+            X_fd[i+1] = a->samples[i+1] * cos(2*PI*fd*i/fs) - a->samples[i] * sin(2*PI*fd*i/fs);
+        }
 
-	bool result;
+        float angle =0;
+        for(int k =0;k<sizeOfX;k+=2){
+            X_fd_DFT[k] = 0;
+            X_fd_DFT[k+1] =0;
+            for(int n =0;n<sizeOfX;n+=2){
+                angle = 2*PI*k*n/sizeOfX*2;
+                X_fd_DFT[k] += a->samples[n]*cos(angle) + a->samples[n+1]*sin(angle);
+                X_fd_DFT[k+1] += -a->samples[n]*sin(angle) + a->samples[n+1]*cos(angle);
+            }
+        }
 
-	return result; // return whether acquisition was achieved or not!
+        float angle =0;
+        for(int k =0;k<sizeOfC;k+=2){
+            C_DFT[k] = 0;
+            C_DFT[k+1] =0;
+            for(int n =0;n<sizeOfC;n+=2){
+                angle = 2*PI*k*n/sizeOfC*2;
+                C_DFT[k] += a->codes[n]*cos(angle) + a->codes[n+1]*sin(angle);
+                C_DFT[k+1] += -a->codes[n]*sin(angle) + a->codes[n+1]*cos(angle);
+            }
+        }
+        float value[sizeOfX];
+        for(int i  = 0; i<sizeOfX; i++){
+            value[i] = X_fd_DFT[i] * C_DFT[i];
+        }
+        float value_IDFT[sizeOfX];
+        int32_t N = sizeOfX /2;
+        for (int n = 0; n < sizeOfX; n+=2) {
+            value_IDFT[n] = 0.0;
+            value_IDFT[n+1] = 0.0;
+            for (int k = 0; k < sizeOfX; k+=2) {
+                float angle = 2 * M_PI * k * n / N;
+                float cos_val = cos(angle);
+                float sin_val = sin(angle);
+
+                value_IDFT[n] += (value[k] * cos_val - value[k+1] * sin_val);
+                value_IDFT[n+1] += (value[k] * sin_val + value[k+1] * cos_val);
+            }
+            value_IDFT[n] /= N;
+            value_IDFT[n+1] /= N;
+        }
+        float max = 0;
+
+        for (int n = 0; n < sizeOfX; n+=2) {
+            float temp =  (value_IDFT[n]*value_IDFT[n] +value_IDFT[n+1]*value_IDFT[n+1])/N/N;
+            if(temp>max){
+                max = temp;
+            }
+            if(max >gamma)
+                result = true;
+        }
+    }
+    return result; // return whether acquisition was achieved or not!
 }
