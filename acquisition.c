@@ -4,6 +4,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <math.h>
+#include <stdio.h>
 
 #define PI 3.14159267
 #define gamma 0.015
@@ -69,8 +70,9 @@ __attribute__((noipa))
 bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* testFrequencies) {
     acquisitionInternal_t * a = (acquisitionInternal_t*) acq;
     bool result = false;
-    int sizeOfC = sizeof(a->codes)/sizeof(float);
-    int sizeOfX = sizeof (a->samples)/sizeof(float);
+    int sizeOfC = 2000;
+    int sizeOfX = 2000;
+
     float P = 0;
     for(int i = 0; i < sizeOfX; i++){
         P += a->samples[i] * a->samples[i];
@@ -119,7 +121,7 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
             value_IDFT[n] = 0.0;
             value_IDFT[n+1] = 0.0;
             for (int k = 0; k < sizeOfX; k+=2) {
-                float angle = 2 * M_PI * k * n / N;
+                float angle = 2 * PI * k * n / N;
                 float cos_val = cos(angle);
                 float sin_val = sin(angle);
 
@@ -128,17 +130,25 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
             }
             value_IDFT[n] /= N;
             value_IDFT[n+1] /= N;
+            printf("Re IDFT %f \n",value_IDFT[n]);
+            printf("Im IDFT %f \n",value_IDFT[n+1]);
         }
         float max = 0;
 
         for (int n = 0; n < sizeOfX; n+=2) {
-            float temp =  (value_IDFT[n]*value_IDFT[n] +value_IDFT[n+1]*value_IDFT[n+1])/N/N;
+            float temp =  (value_IDFT[n]*value_IDFT[n] +value_IDFT[n+1]*value_IDFT[n+1])/P;
+            printf("found temp %f \n",temp);
             if(temp>max){
                 max = temp;
+                    printf("found max %f \n",max);
             }
-            if(max >gamma)
+            if(max >gamma){
+             a->codePhase = n/2;
+            a->dopplerFrequency =fd;
                 result = true;
                 break;
+            }
+
         }
     }
     return result; // return whether acquisition was achieved or not!
