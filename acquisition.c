@@ -98,8 +98,9 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
 
     for(int32_t index_fd = 0; index_fd < testFreqCount; index_fd++){
     if(result) break;
+    
         int32_t fd = testFrequencies[index_fd];
-
+printf("********************test fd = %d**********************\n",fd);
         for(int i = 0; i < sizeOfX; i+=2){
             float alpha = PI*fd*i/fs;
             float cos_val = cos(alpha);
@@ -109,6 +110,8 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
         }
 
         for(int k =0;k<sizeOfX;k+=2){
+        a->X_fd_DFT[k] = 0;
+        a->X_fd_DFT[k+1] = 0;
             for(int n =0;n<sizeOfX;n+=2){
                 float angle1 = PI*k*n/sizeOfX;
                 float cos_val1 = cos(angle1);
@@ -119,6 +122,8 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
         }
 
         for(int kk =0;kk<sizeOfC;kk+=2){
+        a->C_DFT[kk] = 0;
+        a->C_DFT[kk+1] = 0;
             for(int nn =0;nn<sizeOfC;nn+=2){
                 float angle2 = PI*kk*nn/sizeOfC;
                 float cos_val2 = cos(angle2);
@@ -126,15 +131,21 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
                 a->C_DFT[kk] += a->codes[nn]*cos_val2 + a->codes[nn+1]*sin_val2;
                 a->C_DFT[kk+1] += -a->codes[nn]*sin_val2 + a->codes[nn+1]*cos_val2;
             }
+            //printf("C_DFT(%d) = %f,%f \n",kk/2,a->C_DFT[kk],a->C_DFT[kk+1]);
+            
         }
 
-        for(int j  = 0; j<sizeOfX; j+=2){
+        for(int j = 0; j<sizeOfX; j+=2){
             a->values[j] = a->X_fd_DFT[j] * a->C_DFT[j] + a->X_fd_DFT[j+1] * a->C_DFT[j+1];
             a->values[j+1] = a->X_fd_DFT[j+1] * a->C_DFT[j] - a->X_fd_DFT[j] * a->C_DFT[j+1];
+            
+            //printf("values(%d) = %f, %f \n",j/2,a->values[j],a->values[j+1]);
         }
 
         float N = sizeOfX / 2;
         for (int n = 0; n < sizeOfX; n+=2) {
+        a->values_IDFT[n] = 0;
+        a->values_IDFT[n+1] =0;
             for (int k = 0; k < sizeOfX; k+=2) {
                 float angle3 =  PI * k * n / sizeOfX;
                 float cos_val3 = cos(angle3);
@@ -143,8 +154,9 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
                 a->values_IDFT[n] += (a->values[k] * cos_val3 - a->values[k+1] * sin_val3);
                 a->values_IDFT[n+1] += (a->values[k] * sin_val3 + a->values[k+1] * cos_val3);
             }
-            a->values_IDFT[n] /= N;
-            a->values_IDFT[n+1] /= N;
+            a->values_IDFT[n] /= N*N;
+            a->values_IDFT[n+1] /= N*N;
+            //printf("IDFT values(%d) = %f, %f \n",n/2,a->values_IDFT[n],a->values_IDFT[n+1]);
             //printf("Re IDFT %f \n",value_IDFT[n]);
             //printf("Im IDFT %f \n",value_IDFT[n+1]);
         }
@@ -153,11 +165,12 @@ bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* 
         for (int n = 0; n < sizeOfX; n+=2) {
 
             float temp =  (a->values_IDFT[n]*a->values_IDFT[n] +a->values_IDFT[n+1]*a->values_IDFT[n+1])/P;
-            printf("found temp %f \n",temp);
+            //printf("found temp %f \n",temp);
             if(temp > max){
                 max = temp;
                 printf("found max %f \n",max);
                 if(max > gamma){
+                printf("acquisition!");
                     a->codePhase = (int32_t)(n/2);
                     a->dopplerFrequency =fd;
                     result = true;
