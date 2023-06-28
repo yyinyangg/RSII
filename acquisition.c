@@ -6,7 +6,7 @@
 #include <math.h>
 #include <stdio.h>
 
-#define PI 3.14159267
+#define PI M_PI
 #define gamma 0.015
 #define fs 2000000
 
@@ -87,21 +87,21 @@ __attribute__((noipa))
 bool startAcquisition(acquisition_t* acq, int32_t testFreqCount, const int32_t* testFrequencies) {
     acquisitionInternal_t * a = (acquisitionInternal_t*) acq;
     bool result = false;
-    int sizeOfC = 2000;
-    int sizeOfX = 2000;
+    int32_t sizeOfC = 2000;
+    int32_t sizeOfX = 2000;
 
     float P = 0;
     for(int i = 0; i < sizeOfX; i++){
         P += a->samples[i] * a->samples[i];
     }
-    P = P/sizeOfX*2;
+    P = P/1000;
+    float max = 0;
 
     for(int32_t index_fd = 0; index_fd < testFreqCount; index_fd++){
-    if(result) break;
-    
-        int32_t fd = testFrequencies[index_fd];
-printf("********************test fd = %d**********************\n",fd);
-        for(int i = 0; i < sizeOfX; i+=2){
+
+    int32_t fd = testFrequencies[index_fd];
+//printf("********************test fd = %d**********************\n",fd);
+        for(int32_t i = 0; i < sizeOfX; i+=2){
             float alpha = PI*fd*i/fs;
             float cos_val = cos(alpha);
             float sin_val = sin(alpha);
@@ -131,15 +131,11 @@ printf("********************test fd = %d**********************\n",fd);
                 a->C_DFT[kk] += a->codes[nn]*cos_val2 + a->codes[nn+1]*sin_val2;
                 a->C_DFT[kk+1] += -a->codes[nn]*sin_val2 + a->codes[nn+1]*cos_val2;
             }
-            //printf("C_DFT(%d) = %f,%f \n",kk/2,a->C_DFT[kk],a->C_DFT[kk+1]);
-            
         }
 
         for(int j = 0; j<sizeOfX; j+=2){
             a->values[j] = a->X_fd_DFT[j] * a->C_DFT[j] + a->X_fd_DFT[j+1] * a->C_DFT[j+1];
             a->values[j+1] = a->X_fd_DFT[j+1] * a->C_DFT[j] - a->X_fd_DFT[j] * a->C_DFT[j+1];
-            
-            //printf("values(%d) = %f, %f \n",j/2,a->values[j],a->values[j+1]);
         }
 
         float N = sizeOfX / 2;
@@ -156,28 +152,20 @@ printf("********************test fd = %d**********************\n",fd);
             }
             a->values_IDFT[n] /= N*N;
             a->values_IDFT[n+1] /= N*N;
-            //printf("IDFT values(%d) = %f, %f \n",n/2,a->values_IDFT[n],a->values_IDFT[n+1]);
-            //printf("Re IDFT %f \n",value_IDFT[n]);
-            //printf("Im IDFT %f \n",value_IDFT[n+1]);
         }
-        float max = 0;
-
         for (int n = 0; n < sizeOfX; n+=2) {
-
             float temp =  (a->values_IDFT[n]*a->values_IDFT[n] +a->values_IDFT[n+1]*a->values_IDFT[n+1])/P;
-            //printf("found temp %f \n",temp);
             if(temp > max){
                 max = temp;
-                printf("found max %f \n",max);
-                if(max > gamma){
-                printf("acquisition!");
-                    a->codePhase = (int32_t)(n/2);
-                    a->dopplerFrequency =fd;
-                    result = true;
-                    break;
-                }
+                a->codePhase = (int32_t)(n/2);
+                a->dopplerFrequency =fd;
+                //printf("found max %f at %d \n",max,n/2);
             }
         }
+    }
+    if(max > gamma){
+       //printf("acquisition!");
+       result = true;
     }
     return result; // return whether acquisition was achieved or not!
 }
